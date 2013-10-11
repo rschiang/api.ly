@@ -219,3 +219,26 @@ runit_service "calendar-sitting" do
   action [:enable, :start]
   subscribes :restart, "execute[install api.ly]"
 end
+
+# autorun debates generation
+# TODO: clarify TTS auto parsing?
+
+git "/opt/plv8x" do
+  repository "git://github.com/clkao/plv8x.git"
+  reference "master"
+  action :sync
+end
+
+execute "install plv8x" do
+  cwd "/opt/ly/plv8x"
+  action :nothing
+  subscribes :run, resources(:git => "/opt/ly/twlyparser"), :immediately
+  command "npm i && npm link"
+end
+
+cron "gen-debates" do
+  minute "0"
+  hour "6"
+  weekday "1"
+  command "env PLV8XDB=ly /opt/ly/api.ly/scripts/gen-debates.ls | curl -i -H \"Content-Type: application/json\" -X POST -d @- http://127.0.0.1:3000/collections/debates"
+end
